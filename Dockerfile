@@ -36,7 +36,15 @@ RUN npm --no-update-notifier --no-fund --global install pnpm@10.34.4
 WORKDIR /app
 COPY . /app
 
-RUN pnpm install --frozen-lockfile
+# pnpm 10 blocks dependency lifecycle scripts unless explicitly approved.
+# The workspace already contains the project's allowlist; these additional native
+# build scripts are required for the production image to compile the dependency graph.
+RUN pnpm install --frozen-lockfile \
+    --allow-build=@prisma/engines \
+    --allow-build=esbuild \
+    --allow-build=@firebase/util \
+    --allow-build=ffmpeg-static \
+    --allow-build=puppeteer
 
 # The frontend bakes NEXT_PUBLIC_BACKEND_URL at build time (client chunks AND
 # the CSP connect-src in .next/routes-manifest.json; the CSP guard in
