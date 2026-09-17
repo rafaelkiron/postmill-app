@@ -37,14 +37,12 @@ WORKDIR /app
 COPY . /app
 
 # pnpm 10 blocks dependency lifecycle scripts unless explicitly approved.
-# The workspace already contains the project's allowlist; these additional native
-# build scripts are required for the production image to compile the dependency graph.
-RUN pnpm install --frozen-lockfile \
-    --allow-build=@prisma/engines \
-    --allow-build=esbuild \
-    --allow-build=@firebase/util \
-    --allow-build=ffmpeg-static \
-    --allow-build=puppeteer
+# The upstream workspace currently mixes the legacy onlyBuiltDependencies allowlist
+# with the newer allowBuilds map. During the Docker build, normalize that policy and
+# explicitly allow the native/installer packages required by this production image.
+RUN sed -i '/^onlyBuiltDependencies:/,/^allowBuilds:/{ /^allowBuilds:/!d; }' pnpm-workspace.yaml \
+ && sed -i '/^allowBuilds:/a\  "@prisma/engines": true\n  esbuild: true\n  "@firebase/util": true\n  "ffmpeg-static": true\n  puppeteer: true' pnpm-workspace.yaml \
+ && pnpm install --frozen-lockfile
 
 # The frontend bakes NEXT_PUBLIC_BACKEND_URL at build time (client chunks AND
 # the CSP connect-src in .next/routes-manifest.json; the CSP guard in
